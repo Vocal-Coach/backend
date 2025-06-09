@@ -1,247 +1,411 @@
-# Vocal Coach Server - 배포 가이드
+# Vocal Coach Server 🎤
 
-이 문서는 AWS ECS Fargate와 RDS를 사용한 Vocal Coach 서버의 배포 과정을 설명합니다.
+> A backend API server for voice training and vocal practice
 
-## 🏗️ 인프라 아키텍처
+[![NestJS](https://img.shields.io/badge/NestJS-11.0-red?style=flat-square&logo=nestjs)](https://nestjs.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue?style=flat-square&logo=postgresql)](https://www.postgresql.org/)
+[![Docker](https://img.shields.io/badge/Docker-ready-blue?style=flat-square&logo=docker)](https://www.docker.com/)
 
-```
-Internet → ALB → ECS Fargate → RDS PostgreSQL
-              ↓
-           CloudWatch Logs
-              ↓
-        S3 (Terraform State)
-```
+## 📋 What is this?
 
-- **VPC**: 격리된 네트워크 환경
-- **ALB**: Application Load Balancer로 트래픽 분산
-- **ECS Fargate**: 서버리스 컨테이너 서비스
-- **RDS**: 관리형 PostgreSQL 데이터베이스
-- **ECR**: Docker 이미지 저장소
-- **S3**: Terraform state 저장소
-- **DynamoDB**: Terraform state lock
+Vocal Coach Server is a REST API server for voice training and vocal practice. It helps users with sign up, login, training programs, and tracking results.
 
-## 🚀 배포 전 준비사항
+## 📖 API Docs (Swagger)
 
-### 1. AWS 계정 설정
+**🚀 Quick Start**: After running the server, check out the interactive API docs here!
 
-- AWS 계정이 필요합니다
-- IAM 사용자 생성 및 필요한 권한 부여
+- **Local Development**: http://localhost:3000/api
+- **Production**: `{your-domain}/api`
 
-### 2. GitHub Secrets 설정
+> 💡 **Tip**: You can set your JWT token directly in Swagger UI and test all APIs in real time.
 
-Repository Settings > Secrets and variables > Actions에서 다음 시크릿을 추가하세요:
+### What Swagger Can Do
 
-```
-AWS_ACCESS_KEY_ID=your_access_key
-AWS_SECRET_ACCESS_KEY=your_secret_key
-DB_PASSWORD=your_secure_database_password
-JWT_SECRET=your_jwt_secret_key
-```
+- 🔍 **Browse all API endpoints** in real time
+- 🧪 **Test APIs** right in your browser
+- 🔐 **Set JWT authentication** easily
+- 📝 **Auto-generated docs** for requests and responses
+- 💼 **Detailed explanations** of how things work
 
-### 3. 필요한 IAM 권한
+## ✨ Main Features
 
-```json
+- 🔐 **User Authentication**: Sign up and login with JWT tokens
+- 👤 **User Management**: Handle user profiles and gender info
+- 🎯 **Training Management**: Create, edit, and delete voice training programs by level
+- 📊 **Result Tracking**: Record training results and manage scores
+- 📖 **API Documentation**: Auto-generated docs with Swagger
+- 🔒 **Data Validation**: Check input data with Class Validator
+
+## 🏗️ Tech Stack
+
+**Backend Framework**
+
+- NestJS 11.0 (Node.js)
+- TypeScript 5.7
+
+**Database**
+
+- PostgreSQL 16
+- TypeORM (Object-Relational Mapping)
+
+**Authentication**
+
+- JWT (JSON Web Token)
+- Passport.js
+- bcrypt (password encryption)
+
+**API Documentation**
+
+- Swagger (OpenAPI 3.0)
+
+**DevOps**
+
+- Docker & Docker Compose
+- GitHub Actions (CI/CD)
+
+## 🚀 Quick Start
+
+### What You Need
+
+- Node.js 20+
+- Docker & Docker Compose
+- Git
+
+### How to Install and Run
+
+1. **Clone the repository**
+
+   ```bash
+   git clone <repository-url>
+   cd vocal-coach-server
+   ```
+
+2. **Set up environment variables**
+
+   ```bash
+   # Create .env file
+   cp .env.example .env
+
+   # Edit environment variables
+   PORT=3000
+   JWT_SECRET=your-super-secret-jwt-key
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=postgres
+   POSTGRES_DB=postgres
+   ```
+
+3. **Run with Docker Compose**
+
+   ```bash
+   docker compose up --build
+   ```
+
+4. **Run in development mode** (for local development)
+
+   ```bash
+   # Install dependencies
+   yarn install
+
+   # Run only PostgreSQL container
+   docker compose up postgres -d
+
+   # Start development server
+   yarn dev
+   ```
+
+### Access the Server
+
+- **API Server**: http://localhost:3000
+- **Swagger Docs**: http://localhost:3000/api
+
+## 📚 API Structure
+
+### Authentication (Auth)
+
+- `POST /auth/register` - Sign up
+- `POST /auth/login` - Log in
+
+### User
+
+- `GET /user` - Get user info (coming soon)
+
+### Training
+
+- `GET /training` - Get list of trainings
+- `GET /training?id={id}` - Get specific training
+- `POST /training` - Create new training
+- `PATCH /training?id={id}` - Update training
+- `DELETE /training?id={id}` - Delete training
+
+### Training Results
+
+- `GET /training-result` - Get my training results
+- `GET /training-result?id={id}` - Get specific result
+- `GET /training-result?trainingId={id}` - Get results for specific training
+- `POST /training-result` - Record training result
+- `PATCH /training-result?id={id}` - Update result
+- `DELETE /training-result?id={id}` - Delete result
+
+## 🗄️ Database Structure
+
+### User
+
+```typescript
 {
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": ["ec2:*", "ecs:*", "ecr:*", "rds:*", "elasticloadbalancing:*", "iam:*", "ssm:*", "logs:*", "s3:*", "dynamodb:*"],
-      "Resource": "*"
-    }
-  ]
+  id: number;
+  email: string(unique);
+  passwordHash: string;
+  displayName: string(unique);
+  gender: "male" | "female";
+  createdAt: Date;
+  updatedAt: Date;
 }
 ```
 
-## 📦 배포 과정
+### Training
 
-### ⚠️ 중요: 최초 배포 시 S3 백엔드 설정
-
-**첫 번째 배포를 하기 전에** 반드시 S3 백엔드를 설정해야 합니다:
-
-```bash
-# 1. 리포지토리 클론
-git clone <your-repo-url>
-cd vocal-coach-server
-
-# 2. AWS CLI 설정
-aws configure
-
-# 3. S3 백엔드 설정 실행
-chmod +x scripts/setup-backend.sh
-./scripts/setup-backend.sh
+```typescript
+{
+  id: number;
+  title: string;
+  level: number; // 1: beginner, 2: intermediate, 3: advanced
+  data: string; // JSON training data
+  createdAt: Date;
+  updatedAt: Date;
+}
 ```
 
-이 스크립트는 다음을 수행합니다:
+### TrainingResult
 
-- S3 버킷 생성 (Terraform state 저장용)
-- DynamoDB 테이블 생성 (state lock용)
-- backend.tf 파일 자동 생성
-- 기존 state를 S3로 마이그레이션
-
-### 자동 배포 (권장)
-
-1. S3 백엔드 설정 완료 후 `main` 또는 `master` 브랜치에 코드를 푸시합니다
-2. GitHub Actions가 자동으로 실행됩니다:
-   - **Pull Request**: Terraform plan 실행 및 PR에 코멘트
-   - **Main 브랜치**: 전체 배포 프로세스 실행
-     - 코드 린팅
-     - Terraform 인프라 배포
-     - Docker 이미지 빌드 및 ECR 푸시
-     - ECS 서비스 업데이트
-     - 헬스체크 및 배포 완료 확인
-
-### 수동 배포
-
-```bash
-# 1. Terraform 초기화 (S3 백엔드 사용)
-cd terraform
-terraform init
-
-# 2. 인프라 배포
-terraform plan -var="db_password=your_secure_password" -var="jwt_secret=your_jwt_secret"
-terraform apply -var="db_password=your_secure_password" -var="jwt_secret=your_jwt_secret"
-
-# 3. Docker 이미지 빌드 및 푸시
-aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin <ECR_URI>
-docker build -t vocal-coach-app .
-docker tag vocal-coach-app:latest <ECR_URI>:latest
-docker push <ECR_URI>:latest
-
-# 4. ECS 서비스 업데이트
-aws ecs update-service --cluster vocal-coach-cluster --service vocal-coach-app --force-new-deployment
+```typescript
+{
+  id: number;
+  training: Training(관계);
+  user: User(관계);
+  score: number(0 - 100);
+  createdAt: Date;
+  updatedAt: Date;
+}
 ```
 
-## 🔧 환경 변수
+## 🔐 Authentication
 
-애플리케이션에서 사용하는 환경 변수들은 AWS SSM Parameter Store에 안전하게 저장됩니다:
+The API uses JWT (JSON Web Token) based authentication.
 
-- `DB_HOST`: RDS 엔드포인트
-- `DB_PORT`: 데이터베이스 포트 (5432)
-- `DB_NAME`: 데이터베이스 이름
-- `DB_USERNAME`: 데이터베이스 사용자명
-- `DB_PASSWORD`: 데이터베이스 비밀번호
-- `JWT_SECRET`: JWT 토큰 시크릿
-
-## 📊 모니터링
-
-- **CloudWatch Logs**: 애플리케이션 로그 확인
-- **ECS Console**: 서비스 상태 모니터링
-- **RDS Console**: 데이터베이스 성능 모니터링
-- **S3 Console**: Terraform state 파일 확인
-
-## 🔄 CI/CD 파이프라인
-
-### Pull Request 시
-
-- 코드 린팅 실행
-- Terraform plan 실행
-- Plan 결과를 PR에 코멘트로 표시
-
-### Main 브랜치 푸시 시
-
-- 전체 테스트 및 배포 실행
-- 실패 시 자동 롤백
-- 성공 시 헬스체크 수행
-
-## 🐛 트러블슈팅
-
-### S3 백엔드 관련 문제
-
-1. **"bucket does not exist" 오류**
-
+1. **Sign up or log in** to get your token
+2. **Include Bearer token** in Authorization header
    ```bash
-   # S3 백엔드 재설정
-   ./scripts/setup-backend.sh
+   Authorization: Bearer <your-jwt-token>
    ```
 
-2. **State lock 오류**
-
-   ```bash
-   # DynamoDB 테이블 확인
-   aws dynamodb describe-table --table-name vocal-coach-terraform-locks
-
-   # 필요시 강제 unlock
-   terraform force-unlock <lock-id>
-   ```
-
-### 일반적인 문제들
-
-1. **ECS 태스크가 시작되지 않는 경우**
-
-   - CloudWatch 로그에서 에러 확인
-   - 보안 그룹 설정 확인
-   - IAM 역할 권한 확인
-
-2. **데이터베이스 연결 실패**
-
-   - RDS 보안 그룹 설정 확인
-   - SSM Parameter Store 값 확인
-   - VPC 설정 확인
-
-3. **GitHub Actions 실패**
-   - Secrets 설정 확인
-   - AWS 권한 확인
-   - Terraform state 상태 확인
-
-### 로그 확인
+### Examples
 
 ```bash
-# ECS 로그 확인
-aws logs get-log-events --log-group-name /ecs/vocal-coach-app --log-stream-name <stream-name>
+# Sign up
+curl -X POST http://localhost:3000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "password123",
+    "displayName": "John Doe",
+    "gender": "male"
+  }'
 
-# Terraform state 확인
-terraform state list
-terraform state show <resource-name>
+# Log in
+curl -X POST http://localhost:3000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "password123"
+  }'
+
+# Call API that needs authentication
+curl -X GET http://localhost:3000/training \
+  -H "Authorization: Bearer <your-jwt-token>"
 ```
 
-## 🔄 롤백
+## 🛠️ Development
 
-문제가 발생한 경우 이전 버전으로 롤백할 수 있습니다:
+### Scripts
 
 ```bash
-# ECS 서비스 롤백
-aws ecs update-service --cluster vocal-coach-cluster --service vocal-coach-app --task-definition vocal-coach-app:<previous-revision>
+# Development server (watch mode)
+yarn dev
 
-# Terraform 롤백
-git checkout <previous-commit>
-terraform plan
-terraform apply
+# Build for production
+yarn build
+
+# Run production
+yarn start:prod
+
+# Lint code
+yarn lint
+
+# Format code
+yarn format
+
+# Run tests
+yarn test
+yarn test:watch
+yarn test:cov
 ```
 
-## 💰 비용 최적화
+### Project Structure
 
-- **db.t3.micro**: 개발/테스트용 최소 비용
-- **Fargate**: 사용한 만큼만 과금
-- **NAT Gateway**: 필요한 경우에만 사용
-- **S3**: state 파일 저장 (최소 비용)
+```
+src/
+├── auth/                 # Authentication module
+│   ├── dto/             # Data Transfer Objects
+│   ├── guard/           # Auth guards
+│   ├── strategy/        # Passport strategies
+│   ├── auth.controller.ts
+│   ├── auth.service.ts
+│   └── auth.module.ts
+├── user/                # User module
+│   ├── entities/        # User entity
+│   ├── user.controller.ts
+│   ├── user.service.ts
+│   └── user.module.ts
+├── training/            # Training module
+│   ├── dto/             # DTOs
+│   ├── entities/        # Training entity
+│   ├── training.controller.ts
+│   ├── training.service.ts
+│   └── training.module.ts
+├── training-result/     # Training result module
+│   ├── dto/             # DTOs
+│   ├── entities/        # Training result entity
+│   ├── training-result.controller.ts
+│   ├── training-result.service.ts
+│   └── training-result.module.ts
+├── app.controller.ts
+├── app.service.ts
+├── app.module.ts
+└── main.ts              # Application entry point
+```
 
-예상 월 비용:
+## 🚀 Deployment
 
-- RDS (db.t3.micro): ~$15
-- Fargate (24/7 실행): ~$15
-- NAT Gateway: ~$45
-- S3 + DynamoDB: ~$5
-- 기타 (ALB, CloudWatch 등): ~$15
+### Auto Deploy with GitHub Actions
 
-**총 예상 비용: ~$95/월**
+Push to `main` branch to auto deploy to EC2.
 
-## 🔒 보안 고려사항
+**Required GitHub Secrets:**
 
-- 모든 민감한 정보는 SSM Parameter Store에 암호화 저장
-- Terraform state는 S3에 암호화 저장
-- RDS는 프라이빗 서브넷에 위치
-- 보안 그룹으로 네트워크 접근 제한
-- IAM 역할을 통한 최소 권한 원칙 적용
+- `EC2_HOST`: EC2 instance IP
+- `EC2_USER`: EC2 username (default: ec2-user)
+- `EC2_PRIVATE_KEY`: EC2 SSH private key
+- `PORT`: Application port
+- `JWT_SECRET`: JWT secret key
+- `POSTGRES_USER`: PostgreSQL username
+- `POSTGRES_PASSWORD`: PostgreSQL password
+- `POSTGRES_DB`: PostgreSQL database name
 
-## 📞 지원
+### Manual Deploy
 
-문제가 발생하면 다음을 확인하세요:
+```bash
+# Build Docker image
+docker build -t vocal-coach-server .
 
-1. GitHub Actions 로그
-2. CloudWatch 로그
-3. ECS 서비스 이벤트
-4. RDS 상태
-5. Terraform state 상태
+# Run container
+docker run -p 3000:3000 \
+  -e JWT_SECRET=your-secret \
+  -e POSTGRES_HOST=your-db-host \
+  vocal-coach-server
+```
 
-더 자세한 도움이 필요하면 AWS 문서를 참조하거나 이슈를 생성해 주세요.
+## 📖 API Documentation
+
+We provide interactive API docs through Swagger UI.
+
+- **Local**: http://localhost:3000/api
+- **Features**: Test all endpoints directly
+- **Authentication**: Set JWT tokens right in the UI
+
+## 🧪 Testing
+
+```bash
+# Unit tests
+yarn test
+
+# Test in watch mode
+yarn test:watch
+
+# Test with coverage
+yarn test:cov
+
+# End-to-end tests
+yarn test:e2e
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is UNLICENSED.
+
+## 🆘 Troubleshooting
+
+### Common Problems
+
+**1. Database connection fails**
+
+```bash
+# Check PostgreSQL container status
+docker compose ps
+
+# Check logs
+docker compose logs postgres
+```
+
+**2. Port conflicts**
+
+```bash
+# Check what's using the ports
+lsof -i :3000
+lsof -i :5432
+
+# Change port in .env file
+PORT=3001
+```
+
+**3. JWT token expired**
+
+- Tokens expire after 30 days
+- Log in again to get a new token
+
+### Check Logs
+
+```bash
+# Application logs
+docker compose logs nestjs-app
+
+# Database logs
+docker compose logs postgres
+
+# Watch logs in real time
+docker compose logs -f
+```
+
+## 🔮 Future Plans
+
+- [ ] User profile update API
+- [ ] Training category system
+- [ ] Real-time training sessions
+- [ ] Training progress tracking
+- [ ] Social login (Google, Facebook)
+- [ ] File upload (voice files)
+- [ ] Voice analysis features
+- [ ] Push notifications
+- [ ] Admin dashboard
+
+---
+
+**Contact**: If you have questions or issues, please use GitHub Issues.
