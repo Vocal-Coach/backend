@@ -11,7 +11,7 @@ cd terraform
 # Initialize and apply backend setup
 echo "📦 Creating S3 bucket and DynamoDB table..."
 terraform init
-terraform apply -target=aws_s3_bucket.terraform_state -target=aws_s3_bucket_versioning.terraform_state -target=aws_s3_bucket_encryption.terraform_state -target=aws_s3_bucket_public_access_block.terraform_state -target=aws_dynamodb_table.terraform_locks -target=random_string.bucket_suffix -auto-approve
+terraform apply -target=aws_s3_bucket.terraform_state -target=aws_s3_bucket_versioning.terraform_state -target=aws_s3_bucket_server_side_encryption_configuration.terraform_state -target=aws_s3_bucket_public_access_block.terraform_state -target=aws_dynamodb_table.terraform_locks -target=random_string.bucket_suffix -auto-approve
 
 # Get the bucket name and DynamoDB table name
 BUCKET_NAME=$(terraform output -raw s3_bucket_name)
@@ -43,7 +43,7 @@ terraform init -migrate-state -force-copy
 echo "🧹 Cleaning up backend setup resources..."
 terraform state rm aws_s3_bucket.terraform_state
 terraform state rm aws_s3_bucket_versioning.terraform_state
-terraform state rm aws_s3_bucket_encryption.terraform_state
+terraform state rm aws_s3_bucket_server_side_encryption_configuration.terraform_state
 terraform state rm aws_s3_bucket_public_access_block.terraform_state
 terraform state rm aws_dynamodb_table.terraform_locks
 terraform state rm random_string.bucket_suffix
