@@ -21,7 +21,7 @@ jobs:
           key: ${{ secrets.EC2_PRIVATE_KEY }}
           port: 22
           source: "."
-          target: "/home/ec2-user/app"
+          target: "/home/ubuntu/app"
 
       - name: Execute docker-compose on EC2
         uses: appleboy/ssh-action@v1
@@ -31,7 +31,7 @@ jobs:
           key: ${{ secrets.EC2_PRIVATE_KEY }}
           port: 22
           script: |
-            cd /home/ec2-user/app
+            cd /home/ubuntu/app
             echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
             echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" >> .env
             echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
