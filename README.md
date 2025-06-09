@@ -128,7 +128,8 @@ Vocal Coach Server is a REST API server for voice training and vocal practice. I
 
 ### User
 
-- `GET /user` - Get user info (coming soon)
+- `GET /user` - Get current user profile (ID, email, display name)
+- `GET /user?id={id}` - Get specific user profile by ID
 
 ### Training
 
