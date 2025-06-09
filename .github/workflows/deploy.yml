@@ -32,6 +32,7 @@ jobs:
           port: 22
           script: |
             cd /home/ec2-user/app
+            echo "PORT=${{ secrets.PORT }}" >> .env
             echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
             echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}" >> .env
             echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
