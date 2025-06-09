@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBody } from "@nestjs/swagger";
 import { AuthService } from "./auth.service";
 import { RegisterDto } from "./dto/register.dto";
 import { LocalAuthGuard } from "./guard/local.guard";
-import { User } from "src/user/entities/user.entity";
+import { User, Gender } from "src/user/entities/user.entity";
 
 @ApiTags("auth")
 @Controller("auth")
@@ -54,12 +54,13 @@ export class AuthController {
         id: { type: "number", example: 1 },
         email: { type: "string", example: "user@example.com" },
         displayName: { type: "string", example: "홍길동" },
+        gender: { type: "string", example: Gender.MALE, enum: Object.values(Gender) },
       },
     },
   })
   @ApiResponse({ status: 400, description: "잘못된 요청 데이터" })
   @ApiResponse({ status: 409, description: "이미 존재하는 이메일" })
   register(@Body() body: RegisterDto) {
-    return this.authService.register(body.email, body.password, body.displayName);
+    return this.authService.register(body.email, body.password, body.displayName, body.gender);
   }
 }

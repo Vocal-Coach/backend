@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { User } from "src/user/entities/user.entity";
+import { User, Gender } from "src/user/entities/user.entity";
 import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
 
@@ -22,19 +22,33 @@ export class AuthService {
   }
 
   login(user: User) {
-    const payload = { sub: user.id, displayName: user.displayName };
+    const payload = {
+      sub: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      gender: user.gender,
+    };
     return {
       access_token: this.jwtService.sign(payload),
     };
   }
 
-  async register(email: string, password: string, displayName: string): Promise<User> {
+  async register(email: string, password: string, displayName: string, gender: Gender): Promise<User> {
     const existingUser = await this.userRepository.findOneBy({ email: email });
     if (existingUser) {
       throw new BadRequestException("User already exists");
     }
+    const existingDisplayName = await this.userRepository.findOneBy({ displayName: displayName });
+    if (existingDisplayName) {
+      throw new BadRequestException("Display name already exists");
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = this.userRepository.save({ email, passwordHash: hashedPassword, displayName });
+    const user = this.userRepository.save({
+      email,
+      passwordHash: hashedPassword,
+      displayName,
+      gender,
+    });
     return user;
   }
 }

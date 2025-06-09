@@ -2,6 +2,11 @@ import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateCol
 import { Exclude } from "class-transformer";
 import { ApiProperty, ApiHideProperty } from "@nestjs/swagger";
 
+export enum Gender {
+  MALE = "male",
+  FEMALE = "female",
+}
+
 @Entity()
 export class User {
   @ApiProperty({
@@ -29,6 +34,18 @@ export class User {
   })
   @Column({ unique: true })
   displayName: string;
+
+  @ApiProperty({
+    description: "성별",
+    example: Gender.MALE,
+    enum: Gender,
+  })
+  @Column({
+    type: "enum",
+    enum: Gender,
+    default: Gender.MALE,
+  })
+  gender: Gender;
 
   @ApiProperty({
     description: "생성 일시",

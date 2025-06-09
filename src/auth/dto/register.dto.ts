@@ -1,5 +1,6 @@
-import { IsNotEmpty, IsString, IsEmail } from "class-validator";
+import { IsNotEmpty, IsString, IsEmail, IsEnum } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
+import { Gender } from "src/user/entities/user.entity";
 
 export class RegisterDto {
   @ApiProperty({
@@ -27,4 +28,13 @@ export class RegisterDto {
   @IsNotEmpty()
   @IsString()
   displayName: string;
+
+  @ApiProperty({
+    description: "성별",
+    example: Gender.MALE,
+    enum: Gender,
+  })
+  @IsNotEmpty()
+  @IsEnum(Gender)
+  gender: Gender;
 }
